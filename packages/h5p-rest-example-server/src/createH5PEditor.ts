@@ -72,23 +72,71 @@ export default async function createH5PEditor(
     } else {
         // using no cache
     }
-    const contentUserDataStorage =
-        new H5P.fsImplementations.FileContentUserDataStorage(
-            localContentUserDataPath
-        );
+
+    let contentUserDataStorage: H5P.IContentUserDataStorage;
+    if (process.env.USERDATASTORAGE === 'mongo') {
+        const mongoContentUserDataStorage =
+            new dbImplementations.MongoContentUserDataStorage(
+                (await dbImplementations.initMongo()).collection(
+                    process.env.USERDATA_MONGO_COLLECTION
+                ),
+                (await dbImplementations.initMongo()).collection(
+                    process.env.FINISHED_MONGO_COLLECTION
+                )
+            );
+        await mongoContentUserDataStorage.createIndexes();
+        contentUserDataStorage = mongoContentUserDataStorage;
+    } else {
+        contentUserDataStorage =
+            new H5P.fsImplementations.FileContentUserDataStorage(
+                localContentUserDataPath
+            );
+    }
     // Depending on the environment variables we use different implementations
     // of the storage interfaces.
+    let libraryStorage: H5P.ILibraryStorage;
+    if (process.env.LIBRARYSTORAGE === 'mongo') {
+        const mongoLibraryStorage = new dbImplementations.MongoLibraryStorage(
+            (await dbImplementations.initMongo()).collection(
+                process.env.LIBRARY_MONGO_COLLECTION
+            )
+        );
+        await mongoLibraryStorage.createIndexes();
+        libraryStorage = mongoLibraryStorage;
+    } else if (process.env.LIBRARYSTORAGE === 'mongos3') {
+        const mongoS3LibraryStorage =
+            new dbImplementations.MongoS3LibraryStorage(
+                dbImplementations.initS3({ forcePathStyle: true }),
+                (await dbImplementations.initMongo()).collection(
+                    process.env.LIBRARY_MONGO_COLLECTION
+                ),
+                {
+                    s3Bucket: process.env.LIBRARY_AWS_S3_BUCKET,
+                    maxKeyLength: process.env.AWS_S3_MAX_FILE_LENGTH
+                        ? Number.parseInt(
+                              process.env.AWS_S3_MAX_FILE_LENGTH,
+                              10
+                          )
+                        : undefined
+                }
+            );
+        await mongoS3LibraryStorage.createIndexes();
+        libraryStorage = mongoS3LibraryStorage;
+    } else {
+        libraryStorage = new H5P.fsImplementations.FileLibraryStorage(
+            localLibraryPath
+        );
+    }
+
     const h5pEditor = new H5P.H5PEditor(
-        new H5P.cacheImplementations.CachedKeyValueStorage('kvcache', cache), // this is a general-purpose cache
+        new H5P.cacheImplementations.CachedKeyValueStorage('kvcache', cache),
         config,
         process.env.CACHE
             ? new H5P.cacheImplementations.CachedLibraryStorage(
-                  new H5P.fsImplementations.FileLibraryStorage(
-                      localLibraryPath
-                  ),
+                  libraryStorage,
                   cache
               )
-            : new H5P.fsImplementations.FileLibraryStorage(localLibraryPath),
+            : libraryStorage,
         process.env.CONTENTSTORAGE !== 'mongos3'
             ? new H5P.fsImplementations.FileContentStorage(localContentPath)
             : new dbImplementations.MongoS3ContentStorage(

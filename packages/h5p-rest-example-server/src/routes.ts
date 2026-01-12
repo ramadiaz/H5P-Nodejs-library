@@ -196,5 +196,46 @@ export default function (
         );
     });
 
+    router.post(
+        '/install-content-type/:machineName',
+        async (req: IRequestWithUser, res) => {
+            try {
+                const { machineName } = req.params;
+                if (!machineName) {
+                    return res.status(400).send('Machine name is required');
+                }
+                const installedLibraries =
+                    await h5pEditor.installLibraryFromHub(
+                        machineName,
+                        req.user
+                    );
+                const contentTypeCache = await h5pEditor.getContentTypeCache(
+                    req.user,
+                    languageOverride === 'auto'
+                        ? (req.language ?? 'en')
+                        : languageOverride
+                );
+                res.status(200).json({
+                    installed: installedLibraries.filter(
+                        (l) => l.type === 'new'
+                    ).length,
+                    updated: installedLibraries.filter(
+                        (l) => l.type === 'patch'
+                    ).length,
+                    contentTypeCache
+                });
+            } catch (error) {
+                console.error(error);
+                if (error instanceof H5P.H5pError) {
+                    return res.status(error.httpStatusCode).send(error.message);
+                } else {
+                    return res
+                        .status(500)
+                        .send(`Unknown error: ${error.message}`);
+                }
+            }
+        }
+    );
+
     return router;
 }

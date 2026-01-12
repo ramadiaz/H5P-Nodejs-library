@@ -3,6 +3,7 @@ import Container from 'react-bootstrap/Container';
 import Alert from 'react-bootstrap/Alert';
 
 import ContentListComponent from './components/ContentListComponent';
+import ContentTypeCacheComponent from './components/ContentTypeCacheComponent';
 import { ContentService } from './services/ContentService';
 import Login from './components/Login';
 
@@ -48,9 +49,15 @@ export default class App extends React.Component {
                         only and not suitable for production use!
                     </Alert>
                     {this.state.loggedIn ? (
-                        <ContentListComponent
-                            contentService={this.contentService}
-                        ></ContentListComponent>
+                        <>
+                            <ContentTypeCacheComponent
+                                endpointUrl="/h5p/content-type-cache"
+                                csrfToken={this.contentService.getCsrfToken()}
+                            />
+                            <ContentListComponent
+                                contentService={this.contentService}
+                            ></ContentListComponent>
+                        </>
                     ) : (
                         <Alert variant="danger">
                             Content is only visible to logged in users! Please

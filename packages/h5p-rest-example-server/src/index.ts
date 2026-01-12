@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 import { dir, DirectoryResult } from 'tmp-promise';
 import bodyParser from 'body-parser';
 import express from 'express';
@@ -10,6 +12,7 @@ import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import session from 'express-session';
 import csurf from '@dr.pogodin/csurf';
+import cors from 'cors';
 
 import {
     h5pAjaxExpressRouter,
@@ -201,6 +204,13 @@ const start = async (): Promise<void> => {
 
     // We now set up the Express server in the usual fashion.
     const server = express();
+
+    server.use(
+        cors({
+            credentials: true,
+            origin: process.env.CORS_ORIGIN || 'http://localhost:3000'
+        })
+    );
 
     server.use(bodyParser.json({ limit: '500mb' }));
     server.use(

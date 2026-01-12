@@ -16,8 +16,9 @@ export default class ContentTypeCacheComponent extends React.Component<
     /**
      * @param endpointurl the URL of the REST content type cache administration
      * endpoint
+     * @param csrfToken optional CSRF token for authenticated requests
      */
-    constructor(props: { endpointUrl: string }) {
+    constructor(props: { endpointUrl: string; csrfToken?: string }) {
         super(props);
 
         this.state = {
@@ -25,7 +26,8 @@ export default class ContentTypeCacheComponent extends React.Component<
             updatingCache: false
         };
         this.contentTypeCacheService = new ContentTypeCacheService(
-            props.endpointUrl
+            props.endpointUrl,
+            props.csrfToken
         );
     }
 
